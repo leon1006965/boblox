@@ -1,0 +1,205 @@
+--// Windows 10 Accurate Script Executor UI
+--// Movable, minimizable, maximizable, closable, scrolling textbox
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+gui.ResetOnSpawn = false
+
+-- Main Window
+local window = Instance.new("Frame")
+window.Size = UDim2.new(0, 480, 0, 320)
+window.Position = UDim2.new(0.5, -240, 0.5, -160)
+window.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+window.BorderColor3 = Color3.fromRGB(200, 200, 200)
+window.BorderSizePixel = 1
+window.Active = true
+window.Draggable = true
+window.Parent = gui
+
+-- Title Bar
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1, 0, 0, 32)
+titleBar.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+titleBar.BorderSizePixel = 0
+titleBar.Parent = window
+
+local titleText = Instance.new("TextLabel")
+titleText.Size = UDim2.new(1, -135, 1, 0)
+titleText.Position = UDim2.new(0, 10, 0, 0)
+titleText.BackgroundTransparency = 1
+titleText.Text = "AIDS - Premium Roblox Solution"
+titleText.Font = Enum.Font.SourceSans
+titleText.TextSize = 18
+titleText.TextColor3 = Color3.fromRGB(0, 0, 0)
+titleText.TextXAlignment = Enum.TextXAlignment.Left
+titleText.Parent = titleBar
+
+-- Minimize Button
+local minimize = Instance.new("TextButton")
+minimize.Size = UDim2.new(0, 45, 1, 0)
+minimize.Position = UDim2.new(1, -135, 0, 0)
+minimize.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+minimize.Text = "—"
+minimize.TextSize = 20
+minimize.Font = Enum.Font.SourceSans
+minimize.TextColor3 = Color3.fromRGB(0, 0, 0)
+minimize.BorderSizePixel = 0
+minimize.Parent = titleBar
+
+minimize.MouseEnter:Connect(function()
+    minimize.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
+end)
+minimize.MouseLeave:Connect(function()
+    minimize.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+end)
+
+-- Maximize / Restore Button
+local maximize = Instance.new("TextButton")
+maximize.Size = UDim2.new(0, 45, 1, 0)
+maximize.Position = UDim2.new(1, -90, 0, 0)
+maximize.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+maximize.Text = "▢"
+maximize.TextSize = 18
+maximize.Font = Enum.Font.SourceSans
+maximize.TextColor3 = Color3.fromRGB(0, 0, 0)
+maximize.BorderSizePixel = 0
+maximize.Parent = titleBar
+
+maximize.MouseEnter:Connect(function()
+    maximize.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
+end)
+maximize.MouseLeave:Connect(function()
+    maximize.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+end)
+
+-- Close Button
+local close = Instance.new("TextButton")
+close.Size = UDim2.new(0, 45, 1, 0)
+close.Position = UDim2.new(1, -45, 0, 0)
+close.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+close.Text = "X"
+close.TextSize = 18
+close.Font = Enum.Font.SourceSans
+close.TextColor3 = Color3.fromRGB(0, 0, 0)
+close.BorderSizePixel = 0
+close.Parent = titleBar
+
+close.MouseEnter:Connect(function()
+    close.BackgroundColor3 = Color3.fromRGB(232, 17, 35)
+    close.TextColor3 = Color3.fromRGB(255, 255, 255)
+end)
+close.MouseLeave:Connect(function()
+    close.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    close.TextColor3 = Color3.fromRGB(0, 0, 0)
+end)
+
+-- Content Area
+local content = Instance.new("Frame")
+content.Size = UDim2.new(1, 0, 1, -32)
+content.Position = UDim2.new(0, 0, 0, 32)
+content.BackgroundColor3 = Color3.fromRGB(250, 250, 250)
+content.BorderSizePixel = 0
+content.Parent = window
+
+-- ScrollingFrame for TextBox
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.new(1, -20, 1, -70)
+scroll.Position = UDim2.new(0, 10, 0, 10)
+scroll.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+scroll.BorderSizePixel = 1
+scroll.BorderColor3 = Color3.fromRGB(200, 200, 200)
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+scroll.ScrollBarThickness = 6
+scroll.Parent = content
+
+-- TextBox inside scrolling frame
+local box = Instance.new("TextBox")
+box.Size = UDim2.new(1, -10, 0, 20)
+box.Position = UDim2.new(0, 5, 0, 5)
+box.BackgroundTransparency = 1
+box.Text = ""
+box.ClearTextOnFocus = false
+box.MultiLine = true
+box.TextXAlignment = Enum.TextXAlignment.Left
+box.TextYAlignment = Enum.TextYAlignment.Top
+box.TextWrapped = false
+box.TextSize = 16
+box.Font = Enum.Font.Code
+box.TextColor3 = Color3.fromRGB(0, 0, 0)
+box.Parent = scroll
+
+-- Auto-resize textbox + scroll area
+box:GetPropertyChangedSignal("Text"):Connect(function()
+    local textSize = game:GetService("TextService"):GetTextSize(
+        box.Text,
+        box.TextSize,
+        box.Font,
+        Vector2.new(box.AbsoluteSize.X, math.huge)
+    )
+
+    box.Size = UDim2.new(1, -10, 0, textSize.Y + 10)
+    scroll.CanvasSize = UDim2.new(0, 0, 0, box.AbsoluteSize.Y + 10)
+end)
+
+-- Execute Button
+local execute = Instance.new("TextButton")
+execute.Size = UDim2.new(0, 140, 0, 40)
+execute.Position = UDim2.new(1, -150, 1, -50)
+execute.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+execute.Text = "Execute"
+execute.TextSize = 18
+execute.Font = Enum.Font.SourceSansBold
+execute.TextColor3 = Color3.fromRGB(0, 0, 0)
+execute.BorderColor3 = Color3.fromRGB(200, 200, 200)
+execute.BorderSizePixel = 1
+execute.Parent = content
+
+execute.MouseEnter:Connect(function()
+    execute.BackgroundColor3 = Color3.fromRGB(225, 225, 225)
+end)
+execute.MouseLeave:Connect(function()
+    execute.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+end)
+
+-- Minimize Logic
+local minimized = false
+minimize.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    content.Visible = not minimized
+    window.Size = minimized and UDim2.new(0, 480, 0, 32) or UDim2.new(0, 480, 0, 320)
+end)
+
+-- Maximize / Restore Logic
+local maximized = false
+local originalSize = window.Size
+local originalPos = window.Position
+
+maximize.MouseButton1Click:Connect(function()
+    if not maximized then
+        originalSize = window.Size
+        originalPos = window.Position
+        window.Size = UDim2.new(1, 0, 1, 0)
+        window.Position = UDim2.new(0, 0, 0, 0)
+    else
+        window.Size = originalSize
+        window.Position = originalPos
+    end
+    maximized = not maximized
+end)
+
+-- Close Logic
+close.MouseButton1Click:Connect(function()
+    window.Visible = false
+end)
+
+-- Execute Logic
+execute.MouseButton1Click:Connect(function()
+    local scriptText = box.Text
+    if scriptText and scriptText ~= "" then
+        local fn = loadstring(scriptText)
+        if fn then
+            pcall(fn)
+        end
+    end
+end)
