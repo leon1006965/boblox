@@ -1,0 +1,232 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+
+-- State Variables
+local basePosition = nil
+local flyEnabled = false
+local noclipEnabled = false
+local flySpeed = 50
+local tpDistance = -7
+local isStealing = false -- Added to prevent spamming during the 1s wait
+
+-- UI Construction
+local screenGui = Instance.new("ScreenGui", player.PlayerGui)
+screenGui.Name = "UtilityMenu"
+screenGui.ResetOnSpawn = false
+
+local frame = Instance.new("Frame", screenGui)
+frame.Size = UDim2.new(0, 240, 0, 340)
+frame.Position = UDim2.new(0.5, -120, 0.5, -170)
+frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+
+local corner = Instance.new("UICorner", frame)
+corner.CornerRadius = UDim.new(0, 15)
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 50)
+title.Text = "Steal Script"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
+
+local layout = Instance.new("UIListLayout", frame)
+layout.Padding = UDim.new(0, 10)
+layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+-- Helper function for standard buttons
+local function createButton(text, color, order)
+    local btn = Instance.new("TextButton", frame)
+    btn.LayoutOrder = order
+    btn.Size = UDim2.new(0.85, 0, 0, 40)
+    btn.Text = text
+    btn.BackgroundColor3 = color
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextSize = 14
+    btn.AutoButtonColor = true
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    return btn
+end
+
+-- Helper function for iOS Toggles
+local function createIosToggle(labelName, order)
+    local container = Instance.new("Frame", frame)
+    container.Size = UDim2.new(0.85, 0, 0, 40)
+    container.BackgroundTransparency = 1
+    container.LayoutOrder = order
+    
+    local label = Instance.new("TextLabel", container)
+    label.Size = UDim2.new(0.6, 0, 1, 0)
+    label.Text = labelName
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 14
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.BackgroundTransparency = 1
+    
+    local track = Instance.new("TextButton", container)
+    track.Size = UDim2.new(0, 45, 0, 24)
+    track.Position = UDim2.new(1, -45, 0.5, -12)
+    track.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    track.Text = ""
+    local trackCorner = Instance.new("UICorner", track)
+    trackCorner.CornerRadius = UDim.new(1, 0)
+    
+    local thumb = Instance.new("Frame", track)
+    thumb.Size = UDim2.new(0, 20, 0, 20)
+    thumb.Position = UDim2.new(0, 2, 0.5, -10)
+    thumb.BackgroundColor3 = Color3.new(1, 1, 1)
+    local thumbCorner = Instance.new("UICorner", thumb)
+    thumbCorner.CornerRadius = UDim.new(1, 0)
+    
+    return track, thumb
+end
+
+-- Create Elements
+local tpForwardBtn = createButton("Teleport Forward", Color3.fromRGB(45, 45, 45), 1)
+local setBaseBtn = createButton("Select Base Position", Color3.fromRGB(45, 45, 45), 2)
+-- UPDATED: Name changed to "Auto Steal"
+local tpBaseBtn = createButton("Auto Steal", Color3.fromRGB(45, 45, 45), 3)
+
+local flyTrack, flyThumb = createIosToggle("Enable Fly", 4)
+local noclipTrack, noclipThumb = createIosToggle("Enable Noclip", 5)
+
+-- Animation Helper
+local function animateToggle(state, track, thumb)
+    local trackColor = state and Color3.fromRGB(48, 209, 88) or Color3.fromRGB(70, 70, 70)
+    local thumbPos = state and UDim2.new(1, -22, 0.5, -10) or UDim2.new(0, 2, 0.5, -10)
+    
+    TweenService:Create(track, TweenInfo.new(0.2), {BackgroundColor3 = trackColor}):Play()
+    TweenService:Create(thumb, TweenInfo.new(0.2), {Position = thumbPos}):Play()
+end
+
+-------------------------------------------------------------------------------
+-- LOGIC
+-------------------------------------------------------------------------------
+
+-- 1. TP Forward
+tpForwardBtn.MouseButton1Click:Connect(function()
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if root then root.CFrame = root.CFrame * CFrame.new(0, 0, tpDistance) end
+end)
+
+-- 2. Base Logic
+setBaseBtn.MouseButton1Click:Connect(function()
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if root then
+        basePosition = root.CFrame
+        setBaseBtn.Text = "Position Saved!"
+        task.wait(1)
+        setBaseBtn.Text = "Select Base Position"
+    end
+end)
+
+-- UPDATED: Auto Steal Logic (Teleport and Return)
+tpBaseBtn.MouseButton1Click:Connect(function()
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    
+    -- Only run if a base is set, the character exists, and we aren't already stealing
+    if basePosition and root and not isStealing then
+        isStealing = true
+        
+        -- Record current position
+        local originalPosition = root.CFrame
+        
+        -- Teleport to Base
+        char:SetPrimaryPartCFrame(basePosition)
+        
+        -- Wait 1 second
+        task.wait(1)
+        
+        -- Teleport back to where you were
+        char:SetPrimaryPartCFrame(originalPosition)
+        
+        isStealing = false
+    elseif not basePosition then
+        tpBaseBtn.Text = "Set Base First!"
+        task.wait(1)
+        tpBaseBtn.Text = "Auto Steal"
+    end
+end)
+
+-- 3. Noclip Logic
+noclipTrack.MouseButton1Click:Connect(function()
+    noclipEnabled = not noclipEnabled
+    animateToggle(noclipEnabled, noclipTrack, noclipThumb)
+    
+    if not noclipEnabled then
+        local char = player.Character
+        if char then
+            for _, v in pairs(char:GetDescendants()) do
+                if v:IsA("BasePart") then v.CanCollide = true end
+            end
+        end
+    end
+end)
+
+RunService.Stepped:Connect(function()
+    if noclipEnabled and player.Character then
+        for _, v in pairs(player.Character:GetDescendants()) do
+            if v:IsA("BasePart") then v.CanCollide = false end
+        end
+    end
+end)
+
+-- 4. Fly Logic
+flyTrack.MouseButton1Click:Connect(function()
+    flyEnabled = not flyEnabled
+    animateToggle(flyEnabled, flyTrack, flyThumb)
+    
+    local char = player.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    
+    if flyEnabled then
+        hum.PlatformStand = true
+        local bg = Instance.new("BodyGyro", root)
+        bg.Name = "FlyGyro"
+        bg.P = 9e4
+        bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+        
+        local bv = Instance.new("BodyVelocity", root)
+        bv.Name = "FlyVel"
+        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    else
+        hum.PlatformStand = false
+        if root:FindFirstChild("FlyGyro") then root.FlyGyro:Destroy() end
+        if root:FindFirstChild("FlyVel") then root.FlyVel:Destroy() end
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if flyEnabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local root = player.Character.HumanoidRootPart
+        local camera = workspace.CurrentCamera
+        local vel = root:FindFirstChild("FlyVel")
+        local gyro = root:FindFirstChild("FlyGyro")
+        
+        if vel and gyro then
+            local dir = Vector3.new(0,0,0)
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir += camera.CFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir -= camera.CFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir -= camera.CFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir += camera.CFrame.RightVector end
+            
+            vel.Velocity = dir * flySpeed
+            gyro.CFrame = camera.CFrame
+        end
+    end
+end)
